@@ -1,21 +1,25 @@
 package main
 
 import (
+	"bytes"
+	"encoding/json"
 	"flag"
 	"fmt"
 	"io"
+	"io/ioutil"
 	"log"
 	"os"
-	"strings"
 
 	"github.com/go-git/go-git/v5"
 	"github.com/go-git/go-git/v5/plumbing/object"
 	"github.com/go-git/go-git/v5/utils/merkletrie"
 )
 
+// Logger
 var ilog *log.Logger
 var dlog *log.Logger
 
+// file path
 type FilePath string
 
 type CommitFile struct {
@@ -27,8 +31,21 @@ type CommitFile struct {
 
 	CommitHash []string
 
-	// Create
 	CreateBy string
+}
+
+func initLog(isDebug bool, isShowProgress bool) {
+	ilog = log.New(io.Discard, "", log.Ltime|log.Lmicroseconds|log.LUTC)
+	dlog = log.New(io.Discard, "[DEBUG]", log.Ltime|log.Lmicroseconds|log.LUTC)
+	if isShowProgress {
+		ilog.SetOutput(os.Stdout)
+	}
+
+	if isDebug {
+		dlog.SetOutput(os.Stdout)
+		ilog.SetOutput(os.Stdout)
+		ilog.SetPrefix("[INFO ]")
+	}
 }
 
 func checkIfError(err error) {
@@ -98,20 +115,24 @@ func parseCommitLog(cIter object.CommitIter, depth int) (map[FilePath]CommitFile
 			dlog.Println(v)
 
 			path := FilePath(name(v))
+			action, _ := v.Action()
+			var createBy string = ""
+			if action == merkletrie.Insert {
+				createBy = c.Author.Name
+			}
+
 			if val, ok := files[path]; ok {
 				dlog.Printf("exist %s", path)
 				if !contains(val.Authors, c.Author.Name) {
 					val.Authors = append(val.Authors, c.Author.Name)
 				}
 				val.CommitHash = append(val.CommitHash, c.Hash.String())
+				if createBy != "" {
+					val.CreateBy = createBy
+				}
 				files[path] = val
 			} else {
 				dlog.Printf("new file %s", path)
-				action, _ := v.Action()
-				var createBy string = ""
-				if action == merkletrie.Insert {
-					createBy = c.Author.Name
-				}
 				files[path] = CommitFile{
 					Path:       path,
 					Authors:    []string{c.Author.Name},
@@ -127,26 +148,13 @@ func parseCommitLog(cIter object.CommitIter, depth int) (map[FilePath]CommitFile
 	return files, err
 }
 
-func initLog(isDebug bool, isShowProgress bool) {
-	ilog = log.New(io.Discard, "", log.Ltime|log.Lmicroseconds|log.LUTC)
-	dlog = log.New(io.Discard, "[DEBUG]", log.Ltime|log.Lmicroseconds|log.LUTC)
-	if isShowProgress {
-		ilog.SetOutput(os.Stdout)
-	}
-
-	if isDebug {
-		dlog.SetOutput(os.Stdout)
-		ilog.SetOutput(os.Stdout)
-		ilog.SetPrefix("[INFO ]")
-	}
-}
-
 func main() {
-	var branch, path string
+	var branch, path, outputFile string
 	var depth int
 	var isDebug, isShowProgress bool
 	flag.StringVar(&branch, "branch", "master", "branch")
 	flag.StringVar(&path, "path", "./", "path")
+	flag.StringVar(&outputFile, "parse-file", "", "result file")
 	flag.IntVar(&depth, "depth", -1, "depth")
 	flag.BoolVar(&isDebug, "debug", false, "debug")
 	flag.BoolVar(&isShowProgress, "show-progress", false, "show progress")
@@ -161,14 +169,20 @@ func main() {
 	checkIfError(err)
 
 	cIter, err := r.Log(&git.LogOptions{From: head.Hash(), Order: git.LogOrderCommitterTime})
-
-	// cIter, err := r.CommitObjects()
 	checkIfError(err)
 
 	files, err := parseCommitLog(cIter, depth)
 	checkIfError(err)
 
-	for _, file := range files {
-		fmt.Printf("path=%s, authors=[%s]\n", file.Path, strings.Join(file.Authors, ","))
+	j, err := json.Marshal(files)
+	checkIfError(err)
+
+	var buf bytes.Buffer
+	json.Indent(&buf, j, "", "  ")
+
+	fmt.Printf("%s\n", buf.String())
+	if outputFile != "" {
+		err := ioutil.WriteFile(outputFile, buf.Bytes(), 0666)
+		checkIfError(err)
 	}
 }
