@@ -48,16 +48,27 @@ func contains(s []string, e string) bool {
 	return false
 }
 
+var emptyChange object.ChangeEntry
+
+func name(c *object.Change) string {
+	if c.From != emptyChange {
+		return c.From.Name
+	}
+	return c.To.Name
+}
+
 func parseCommitLog(cIter object.CommitIter, depth int) (map[FilePath]CommitFile, error) {
 	files := make(map[FilePath]CommitFile)
 	count := 0
 	err := cIter.ForEach(func(c *object.Commit) error {
 		// ignore marge commit
 		if len(c.ParentHashes) > 1 {
+			dlog.Println("ignore marge commit")
 			return nil
 		}
 		count++
 		if count > depth && depth > 0 {
+			dlog.Printf("over depth count=%d, depth=%d", count, depth)
 			return nil
 		}
 
@@ -86,14 +97,16 @@ func parseCommitLog(cIter object.CommitIter, depth int) (map[FilePath]CommitFile
 		for _, v := range diff {
 			dlog.Println(v)
 
-			path := FilePath(v.From.Name)
+			path := FilePath(name(v))
 			if val, ok := files[path]; ok {
+				dlog.Printf("exist %s", path)
 				if !contains(val.Authors, c.Author.Name) {
 					val.Authors = append(val.Authors, c.Author.Name)
 				}
 				val.CommitHash = append(val.CommitHash, c.Hash.String())
 				files[path] = val
 			} else {
+				dlog.Printf("new file %s", path)
 				action, _ := v.Action()
 				var createBy string = ""
 				if action == merkletrie.Insert {
