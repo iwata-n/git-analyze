@@ -3,50 +3,17 @@ package main
 import (
 	"bytes"
 	"encoding/json"
-	"flag"
 	"fmt"
-	"io"
 	"io/ioutil"
 	"log"
-	"os"
 
 	"github.com/go-git/go-git/v5"
 	"github.com/go-git/go-git/v5/plumbing/object"
 	"github.com/go-git/go-git/v5/utils/merkletrie"
 )
 
-// Logger
 var ilog *log.Logger
 var dlog *log.Logger
-
-// file path
-type FilePath string
-
-type CommitFile struct {
-	// file path
-	Path FilePath
-
-	// Author list
-	Authors []string
-
-	CommitHash []string
-
-	CreateBy string
-}
-
-func initLog(isDebug bool, isShowProgress bool) {
-	ilog = log.New(io.Discard, "", log.Ltime|log.Lmicroseconds|log.LUTC)
-	dlog = log.New(io.Discard, "[DEBUG]", log.Ltime|log.Lmicroseconds|log.LUTC)
-	if isShowProgress {
-		ilog.SetOutput(os.Stdout)
-	}
-
-	if isDebug {
-		dlog.SetOutput(os.Stdout)
-		ilog.SetOutput(os.Stdout)
-		ilog.SetPrefix("[INFO ]")
-	}
-}
 
 func checkIfError(err error) {
 	if err == nil {
@@ -74,8 +41,8 @@ func name(c *object.Change) string {
 	return c.To.Name
 }
 
-func parseCommitLog(cIter object.CommitIter, depth int) (map[FilePath]CommitFile, error) {
-	files := make(map[FilePath]CommitFile)
+func parseCommitLog(cIter object.CommitIter, depth int) (ParseResult, error) {
+	files := make(ParseResult)
 	count := 0
 	err := cIter.ForEach(func(c *object.Commit) error {
 		// ignore marge commit
@@ -148,19 +115,10 @@ func parseCommitLog(cIter object.CommitIter, depth int) (map[FilePath]CommitFile
 	return files, err
 }
 
-func main() {
-	var branch, path, outputFile string
-	var depth int
-	var isDebug, isShowProgress bool
-	flag.StringVar(&branch, "branch", "master", "branch")
-	flag.StringVar(&path, "path", "./", "path")
-	flag.StringVar(&outputFile, "parse-file", "", "result file")
-	flag.IntVar(&depth, "depth", -1, "depth")
-	flag.BoolVar(&isDebug, "debug", false, "debug")
-	flag.BoolVar(&isShowProgress, "show-progress", false, "show progress")
-	flag.Parse()
-	initLog(isDebug, isShowProgress)
-	dlog.Printf("path=%s branch=%s depth=%d", path, branch, depth)
+func parse(config Config) ParseResult {
+	path := config.Path
+	outputFile := config.OutputFile
+	depth := config.Depth
 
 	r, err := git.PlainOpen(path)
 	checkIfError(err)
@@ -180,9 +138,22 @@ func main() {
 	var buf bytes.Buffer
 	json.Indent(&buf, j, "", "  ")
 
-	fmt.Printf("%s\n", buf.String())
 	if outputFile != "" {
 		err := ioutil.WriteFile(outputFile, buf.Bytes(), 0666)
 		checkIfError(err)
+	}
+
+	return files
+}
+
+func main() {
+
+	config := ParseArgs()
+
+	dlog, ilog = InitLog(config.IsDebug, config.IsShowProgress)
+	dlog.Printf("config=%+v", config)
+
+	if !config.IsSkipParse {
+		parse(config)
 	}
 }
