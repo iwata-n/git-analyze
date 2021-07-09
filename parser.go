@@ -103,6 +103,7 @@ func parseCommitLog(cIter object.CommitIter, depth int) (ParseResult, error) {
 }
 
 func parse(config Config) ParseResult {
+	dlog.Println("parse")
 	path := config.Path
 	outputFile := config.OutputFile
 	depth := config.Depth
@@ -134,6 +135,7 @@ func parse(config Config) ParseResult {
 }
 
 func open_result(config Config) ParseResult {
+	dlog.Println("open_result")
 	raw, err := ioutil.ReadFile(config.OutputFile)
 	checkIfError(err)
 

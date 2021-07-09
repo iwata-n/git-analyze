@@ -1,19 +1,23 @@
 package main
 
 import (
-	"fmt"
 	"log"
-	"strings"
 )
 
+// Info
 var ilog *log.Logger
+
+// Debug
 var dlog *log.Logger
+
+// Output
+var output *log.Logger
 
 func main() {
 
 	config := ParseArgs()
 
-	dlog, ilog = InitLog(config.IsDebug, config.IsShowProgress)
+	dlog, ilog, output = InitLog(config.IsDebug, config.IsShowProgress)
 	dlog.Printf("config=%+v", config)
 
 	var result ParseResult
@@ -23,13 +27,9 @@ func main() {
 		result = parse(config)
 	}
 
-	if config.IsSearchOnlyTargetAuthor {
-		r, err := searchOnlyTargetAuthor(result, config.Authors)
-		checkIfError(err)
+	list := Sort(result, config)
 
-		// fmt.Printf("%+v\n", JsonString(f))
-		for _, f := range r {
-			fmt.Printf("%s, %s\n", f.Path, strings.Join(f.Authors, ", "))
-		}
+	if config.IsSearchOnlyTargetAuthor {
+		searchOnlyTargetAuthor(list, config)
 	}
 }
