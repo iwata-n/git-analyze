@@ -18,7 +18,7 @@ type Config struct {
 
 	Depth int
 
-	IsDebug, IsShowProgress, IsSearchOnlyTargetAuth, IsSkipParse bool
+	IsDebug, IsShowProgress, IsSearchOnlyTargetAuthor, IsSkipParse bool
 
 	Authors ArgsAuthor
 }
@@ -41,14 +41,14 @@ func ParseArgs() Config {
 	flag.Parse()
 
 	return Config{
-		Branch:                 branch,
-		Path:                   path,
-		OutputFile:             outputFile,
-		Depth:                  depth,
-		Authors:                authors,
-		IsDebug:                isDebug,
-		IsShowProgress:         isShowProgress,
-		IsSearchOnlyTargetAuth: isSearchOnlyTargetAuthor,
-		IsSkipParse:            isSkipParse,
+		Branch:                   branch,
+		Path:                     path,
+		OutputFile:               outputFile,
+		Depth:                    depth,
+		Authors:                  authors,
+		IsDebug:                  isDebug,
+		IsShowProgress:           isShowProgress,
+		IsSearchOnlyTargetAuthor: isSearchOnlyTargetAuthor,
+		IsSkipParse:              isSkipParse,
 	}
 }

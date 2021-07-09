@@ -1,6 +1,8 @@
 package main
 
 import (
+	"bytes"
+	"encoding/json"
 	"io"
 	"log"
 	"os"
@@ -20,4 +22,14 @@ func InitLog(isDebug bool, isShowProgress bool) (*log.Logger, *log.Logger) {
 	}
 
 	return dlog, ilog
+}
+
+func JsonString(a ...interface{}) string {
+	var buf bytes.Buffer
+	m, err := json.Marshal(a)
+	checkIfError(err)
+
+	err = json.Indent(&buf, m, "", "  ")
+
+	return buf.String()
 }

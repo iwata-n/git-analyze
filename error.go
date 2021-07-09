@@ -5,7 +5,7 @@ import (
 	"log"
 )
 
-func CheckIfError(err error) {
+func checkIfError(err error) {
 	if err == nil {
 		return
 	}
