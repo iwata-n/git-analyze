@@ -14,3 +14,12 @@ builds:
     - amd64
     - arm
     - arm64
+brews:
+  - tap:
+      owner: iwata-n
+      name: homebrew-git-analyze
+    folder: Formula
+    homepage: https://github.com/iwata-n/git-analyze
+    description: git commit log analyze
+    test: |
+      system "#{bin}/goreleaser -v"
